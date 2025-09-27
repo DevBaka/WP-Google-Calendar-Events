@@ -350,7 +350,7 @@ class GCAL_Settings {
         
         $themes = [
             'default' => __('Standard-Design', 'gcal-events'),
-            'modern' => __('Modernes Design', 'gcal-events')
+            'modern' => __('Dunkles Design', 'gcal-events')
         ];
         
         echo '<select id="gcal_theme" name="gcal_settings[theme]">';
