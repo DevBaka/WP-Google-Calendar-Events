@@ -1,36 +1,41 @@
-/* Modern Theme - Clean and Minimal */
+/* Modern Theme - Dark Professional */
 
 /* Main Events Container */
 .gcal-events-container.theme-modern {
-    font-family: 'Inter', 'Open Sans', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     max-width: 100%;
     margin: 0 auto;
+    color: #e0e0e0;
 }
 
 /* Month Group */
 .gcal-events-container.theme-modern .gcal-month-group {
-    margin-bottom: 2rem;
-    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 2.5rem;
+    background: rgba(30, 30, 35, 0.95);
     border-radius: 12px;
-    padding: 1.5rem;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.8rem 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .gcal-events-container.theme-modern .gcal-month-title {
-    font-size: 1.4rem;
-    color: #fff;
-    margin: 0 0 1.2rem;
+    font-size: 1.5rem;
+    color: #ffffff;
+    margin: 0 0 1.5rem;
     padding-bottom: 0.8rem;
     border-bottom: 2px solid rgba(255, 255, 255, 0.1);
     font-weight: 600;
     letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    letter-spacing: 1.5px;
+    opacity: 0.9;
 }
 
 /* Event Item */
 .gcal-events-container.theme-modern .gcal-event {
-    margin-bottom: 1.2rem;
-    transition: all 0.25s ease;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .gcal-events-container.theme-modern .gcal-event:last-child {
@@ -39,87 +44,157 @@
 
 .gcal-events-container.theme-modern .gcal-event-inner {
     display: flex;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(40, 40, 45, 0.95);
     border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .gcal-events-container.theme-modern .gcal-event-inner:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Event Date */
 .gcal-events-container.theme-modern .gcal-event-date {
-    background: linear-gradient(135deg, #4a6cf7 0%, #2541b2 100%);
-    padding: 1.2rem 1rem;
+    background: linear-gradient(135deg, #3a5bd9 0%, #1e3a8a 100%);
+    padding: 1.4rem 1.2rem;
     text-align: center;
-    min-width: 80px;
+    min-width: 85px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    color: white;
+    color: #ffffff !important; /* Force white text */
+    position: relative;
+    overflow: hidden;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.gcal-events-container.theme-modern .gcal-event-date::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1), transparent);
+    transform: rotate(45deg);
+    opacity: 0.2;
 }
 
 .gcal-events-container.theme-modern .gcal-event-day {
-    font-size: 1.8rem;
-    font-weight: 700;
+    font-size: 2.2rem;
+    font-weight: 800;
     line-height: 1;
-    margin-bottom: 2px;
+    margin-bottom: 0.1rem;
+    position: relative;
+    z-index: 1;
+    color: #ffffff !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    letter-spacing: -0.5px;
 }
 
 .gcal-events-container.theme-modern .gcal-event-month {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
-    font-weight: 600;
-    opacity: 0.9;
-    letter-spacing: 1px;
-    margin-top: 2px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-top: 0.1rem;
+    position: relative;
+    z-index: 1;
+    color: rgba(255, 255, 255, 0.95) !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.15);
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    margin-top: 0.3rem;
 }
 
 /* Event Content */
 .gcal-events-container.theme-modern .gcal-event-content {
     flex: 1;
-    padding: 1.3rem 1.5rem;
-    background: white;
+    padding: 1.5rem 1.8rem;
+    background: rgba(45, 45, 50, 0.7);
+    border-left: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .gcal-events-container.theme-modern .gcal-event-title {
-    margin: 0 0 0.6rem;
-    font-size: 1.15rem;
+    margin: 0 0 0.8rem;
+    font-size: 1.2rem;
     font-weight: 600;
-    color: #1a1a1a;
+    color: #ffffff;
+    letter-spacing: 0.2px;
 }
 
 .gcal-events-container.theme-modern .gcal-event-meta {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.88rem;
-    color: #555;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+    font-size: 0.9rem;
+    color: #b0b0b0;
 }
 
 .gcal-events-container.theme-modern .gcal-event-location,
 .gcal-events-container.theme-modern .gcal-event-time {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    color: #555;
+    gap: 0.6rem;
+    color: #ffffff !important;
+    font-size: 0.95rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, rgba(92, 134, 255, 0.2) 0%, rgba(58, 91, 217, 0.2) 100%);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(92, 134, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.gcal-events-container.modern .gcal-event-location i,
-.gcal-events-container.modern .gcal-event-time i {
-    color: #4a6cf7;
+.gcal-events-container.theme-modern .gcal-event-location:hover,
+.gcal-events-container.theme-modern .gcal-event-time:hover {
+    background: linear-gradient(135deg, rgba(92, 134, 255, 0.3) 0%, rgba(58, 91, 217, 0.3) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.gcal-events-container.theme-modern .gcal-event-location i,
+.gcal-events-container.theme-modern .gcal-event-time i {
+    color: #ffffff !important;
     font-size: 1rem;
+    opacity: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* Event Description */
+.gcal-events-container.theme-modern .gcal-event-description {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    color: #cccccc;
+    line-height: 1.6;
+    font-size: 0.95rem;
+
+/* No Events Message */
+.gcal-events-container.theme-modern .gcal-no-events {
+    text-align: center;
+    color: #999999;
+    padding: 2rem;
+    font-size: 1.1rem;
+    font-style: italic;
 }
 
 /* Responsive Design */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+    .gcal-events-container.theme-modern .gcal-month-group {
+        padding: 1.5rem 1.2rem;
+    }
+    
     .gcal-events-container.theme-modern .gcal-event-inner {
         flex-direction: column;
     }
@@ -127,17 +202,30 @@
     .gcal-events-container.theme-modern .gcal-event-date {
         flex-direction: row;
         justify-content: center;
-        padding: 0.8rem;
-        gap: 1rem;
+        padding: 1rem;
+        min-width: 100%;
+        border-radius: 0;
     }
     
-    .gcal-events-container.modern .gcal-event-day,
+    .gcal-events-container.theme-modern .gcal-event-day,
     .gcal-events-container.theme-modern .gcal-event-month {
         display: inline-block;
+        margin: 0 0.5rem;
     }
     
-    .gcal-events-container.theme-modern .gcal-event-month {
-        margin-top: 0;
-        font-size: 0.9rem;
+    .gcal-events-container.theme-modern .gcal-event-content {
+        padding: 1.2rem;
+    }
+    
+    .gcal-events-container.theme-modern .gcal-event-meta {
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+    
+    .gcal-events-container.theme-modern .gcal-event-location,
+    .gcal-events-container.theme-modern .gcal-event-time {
+        width: fit-content;
     }
 }
+
+
