@@ -191,12 +191,23 @@ class GCAL_Importer {
         }
         
         try {
-            $date = DateTime::createFromFormat($format, $date_str, $is_utc ? new DateTimeZone('UTC') : null);
+            // Create date in the timezone it was provided in
+            $date = DateTime::createFromFormat(
+                $format, 
+                $date_str, 
+                $is_utc ? new DateTimeZone('UTC') : $this->timezone
+            );
             
             if ($date) {
-                if ($is_utc) {
-                    $date->setTimezone($this->timezone);
-                }
+                // Convert to UTC for storage
+                $date->setTimezone(new DateTimeZone('UTC'));
+                
+                // For debugging - log the conversion
+                error_log('Parsed date - Original: ' . $value . 
+                         ', Local: ' . $date->format('Y-m-d H:i:s T') . 
+                         ', UTC: ' . $date->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s T'));
+                
+                // Return in MySQL format in UTC
                 return $date->format('Y-m-d H:i:s');
             }
         } catch (Exception $e) {

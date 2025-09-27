@@ -124,6 +124,14 @@ class GCAL_Settings {
             'gcal_general_section'
         );
         
+        add_settings_field(
+            'cleanup_on_deactivate',
+            __('Datenbank bei Deaktivierung löschen', 'gcal-events'),
+            [$this, 'render_cleanup_field'],
+            'gcal-settings',
+            'gcal_general_section'
+        );
+        
         // Add preview styles
         add_action('admin_footer', [$this, 'add_theme_preview_styles']);
     }
@@ -160,6 +168,8 @@ class GCAL_Settings {
         $sanitized['time_format'] = isset($input['time_format'])
             ? sanitize_text_field($input['time_format'])
             : 'H:i';
+            
+        $sanitized['cleanup_on_deactivate'] = isset($input['cleanup_on_deactivate']) ? 1 : 0;
         
         add_settings_error(
             'gcal_settings',
@@ -554,6 +564,20 @@ class GCAL_Settings {
         );
         
         echo '</fieldset>';
+    }
+    
+    public function render_cleanup_field() {
+        $value = isset($this->options['cleanup_on_deactivate']) ? (bool)$this->options['cleanup_on_deactivate'] : false;
+        ?>
+        <label>
+            <input type='hidden' name='gcal_settings[cleanup_on_deactivate]' value='0'>
+            <input type='checkbox' name='gcal_settings[cleanup_on_deactivate]' value='1' <?php checked($value); ?>>
+            <?php _e('Datenbanktabelle beim Deaktivieren des Plugins löschen', 'gcal-events'); ?>
+        </label>
+        <p class='description'>
+            <?php _e('Wenn aktiviert, wird die Datenbanktabelle mit allen Terminen beim Deaktivieren des Plugins gelöscht. Beim erneuten Aktivieren wird eine neue, leere Tabelle erstellt.', 'gcal-events'); ?>
+        </p>
+        <?php
     }
     
     // Helper method to add an import log entry

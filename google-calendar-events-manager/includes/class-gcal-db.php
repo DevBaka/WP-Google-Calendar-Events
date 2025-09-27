@@ -11,6 +11,9 @@ class GCAL_DB {
         $this->table_name = $wpdb->prefix . 'gcal_events';
     }
     
+    /**
+     * Create the events table
+     */
     public static function create_events_table() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'gcal_events';
@@ -35,7 +38,14 @@ class GCAL_DB {
         dbDelta($sql);
         
         // Add version to track updates
-        add_option('gcal_db_version', '1.0');
+        update_option('gcal_db_version', '1.0');
+    }
+    
+    /**
+     * Create all necessary database tables
+     */
+    public function create_tables() {
+        self::create_events_table();
     }
     
     public function get_events($limit = 0) {
@@ -93,5 +103,26 @@ class GCAL_DB {
                 current_time('mysql', -1)
             )
         );
+    }
+    
+    /**
+     * Drop the events table when uninstalling
+     */
+    public static function drop_events_table() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'gcal_events';
+        
+        // Check if table exists before trying to drop it
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+            // Drop the table
+            $wpdb->query("DROP TABLE IF EXISTS $table_name");
+            
+            // Remove the version option
+            delete_option('gcal_db_version');
+            
+            return true;
+        }
+        
+        return false;
     }
 }

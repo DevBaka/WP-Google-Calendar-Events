@@ -94,7 +94,7 @@ GPL-2.0+
 
 ## Support
 
-For support, please open an issue on the [GitHub repository](https://github.com/yourusername/wp-google-calendar-events).
+For support, please open an issue on the [GitHub repository](https://github.com/devbaka/wp-google-calendar-events).
 
 ## Contributing
 

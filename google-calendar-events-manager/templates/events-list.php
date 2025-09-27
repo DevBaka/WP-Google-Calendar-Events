@@ -10,17 +10,42 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// Get options
+// Ensure WordPress core functions are available
+if (!function_exists('get_option')) {
+    require_once(ABSPATH . 'wp-includes/option.php');
+}
+
+// Get plugin options
 $options = get_option('gcal_settings', []);
 $date_format = $options['date_format'] ?? 'd.m.Y';
 $time_format = $options['time_format'] ?? 'H:i';
+$theme = $options['theme'] ?? 'default';
 
-// German month names
+// German month names for display
 $months_de = [
     '01' => 'Januar', '02' => 'Februar', '03' => 'März', '04' => 'April',
     '05' => 'Mai', '06' => 'Juni', '07' => 'Juli', '08' => 'August',
     '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Dezember'
 ];
+
+// Get current time in WordPress timezone
+$now = current_time('mysql');
+
+// Get WordPress timezone
+$timezone_string = get_option('timezone_string');
+if (empty($timezone_string)) {
+    $gmt_offset = (float) get_option('gmt_offset');
+    $hours = (int) $gmt_offset;
+    $minutes = abs(($gmt_offset - $hours) * 60);
+    $timezone_string = sprintf('%+03d:%02d', $hours, $minutes);
+    if ($timezone_string === '+00:00') {
+        $timezone_string = 'UTC';
+    }
+}
+
+// Create timezone objects
+$utc_timezone = new DateTimeZone('UTC');
+$local_timezone = new DateTimeZone($timezone_string);
 
 // Get events if not passed
 if (!isset($events)) {
@@ -53,9 +78,15 @@ $theme = isset($options['theme']) && $options['theme'] === 'modern' ? 'modern' :
         $first_item = true;
         
         foreach ($events as $event) : 
-            $date = new DateTime($event['start_time']);
-            $date_end = new DateTime($event['end_time']);
+            // Create DateTime objects from the stored UTC times
+            $date = new DateTime($event['start_time'], new DateTimeZone('UTC'));
+            $date_end = new DateTime($event['end_time'], new DateTimeZone('UTC'));
             
+            // Set the timezone to the site's timezone for display
+            $date->setTimezone($local_timezone);
+            $date_end->setTimezone($local_timezone);
+            
+            // Get the day for grouping events by month
             $day = $date->format('d');
             $month_num = $date->format('m');
             $month = $months_de[$month_num] ?? $date->format('F');
