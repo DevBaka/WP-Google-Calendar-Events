@@ -14,6 +14,9 @@ class GCAL_Settings {
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('admin_notices', [$this, 'admin_notices']);
+        
+        // AJAX handlers
+        add_action('wp_ajax_gcal_get_import_logs', [$this, 'ajax_get_import_logs']);
     }
     
     public function add_settings_page() {
@@ -304,6 +307,21 @@ class GCAL_Settings {
     
     public function admin_notices() {
         settings_errors('gcal_settings');
+    }
+    
+    /**
+     * AJAX handler to get import logs
+     */
+    public function ajax_get_import_logs() {
+        check_ajax_referer('gcal_manual_import', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Unauthorized access', 'gcal-events')], 403);
+            return;
+        }
+        
+        $logs = get_option('gcal_import_logs', []);
+        wp_send_json_success($logs);
     }
     
     // Section Render Functions

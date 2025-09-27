@@ -17,9 +17,14 @@ class GCAL_Importer {
     
     public function import_events() {
         if (empty($this->ics_url)) {
-            error_log('GCAL Importer: No ICS URL configured');
+            $message = 'Keine ICS-URL konfiguriert';
+            error_log('GCAL Importer: ' . $message);
+            GCAL_Settings::add_import_log($message, false);
             return false;
         }
+        
+        $message = 'Import gestartet von: ' . $this->ics_url;
+        GCAL_Settings::add_import_log($message);
         
         $response = wp_remote_get($this->ics_url, [
             'timeout' => 30,
@@ -27,19 +32,25 @@ class GCAL_Importer {
         ]);
         
         if (is_wp_error($response)) {
-            error_log('GCAL Importer: ' . $response->get_error_message());
+            $message = 'Fehler beim Abrufen der ICS-Datei: ' . $response->get_error_message();
+            error_log('GCAL Importer: ' . $message);
+            GCAL_Settings::add_import_log($message, false);
             return false;
         }
         
         $ics_content = wp_remote_retrieve_body($response);
         if (empty($ics_content)) {
-            error_log('GCAL Importer: Empty ICS content');
+            $message = 'Leerer ICS-Inhalt empfangen';
+            error_log('GCAL Importer: ' . $message);
+            GCAL_Settings::add_import_log($message, false);
             return false;
         }
         
         $events = $this->parse_ics($ics_content);
         if (empty($events)) {
-            error_log('GCAL Importer: No events found in ICS');
+            $message = 'Keine Ereignisse in der ICS-Datei gefunden';
+            error_log('GCAL Importer: ' . $message);
+            GCAL_Settings::add_import_log($message, false);
             return false;
         }
         
@@ -51,14 +62,17 @@ class GCAL_Importer {
         }
         
         // Clean up old events
-        $this->db->delete_old_events();
+        $deleted = $this->db->delete_old_events();
+        
+        $message = sprintf('Erfolgreich %d Ereignisse importiert, %d veraltete Ereignisse gelöscht', $imported, $deleted);
+        GCAL_Settings::add_import_log($message);
         
         return $imported;
     }
     
     public function manual_import() {
         if (!current_user_can('manage_options')) {
-            wp_send_json_error('Unauthorized');
+            wp_send_json_error(__('Nicht autorisiert', 'gcal-events'));
         }
         
         check_ajax_referer('gcal_manual_import', 'nonce');
@@ -66,9 +80,19 @@ class GCAL_Importer {
         $result = $this->import_events();
         
         if ($result === false) {
-            wp_send_json_error('Import failed. Check error log for details.');
+            $logs = get_option('gcal_import_logs', []);
+            $last_log = !empty($logs) ? $logs[0] : null;
+            $error_message = $last_log && !$last_log['success'] ? $last_log['message'] : __('Unbekannter Fehler', 'gcal-events');
+            
+            wp_send_json_error(sprintf(__('Import fehlgeschlagen: %s', 'gcal-events'), $error_message));
         } else {
-            wp_send_json_success(sprintf('Successfully imported %d events', $result));
+            $logs = get_option('gcal_import_logs', []);
+            $last_log = !empty($logs) ? $logs[0] : null;
+            
+            $success_message = $last_log ? $last_log['message'] : 
+                sprintf(__('Erfolgreich %d Ereignisse importiert', 'gcal-events'), $result);
+                
+            wp_send_json_success($success_message);
         }
     }
     
