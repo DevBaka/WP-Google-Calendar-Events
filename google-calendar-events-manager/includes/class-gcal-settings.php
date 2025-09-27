@@ -381,7 +381,7 @@ class GCAL_Settings {
                 esc_attr($active_class),
                 esc_attr($value),
                 esc_html($label),
-                esc_url(GCAL_EVENTS_PLUGIN_URL . 'assets/images/theme-' . $value . '.jpg'),
+                esc_url(GCAL_EVENTS_PLUGIN_URL . 'assets/images/theme-' . $value . '.png'),
                 esc_attr($label)
             );
         }
