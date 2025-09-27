@@ -1,0 +1,201 @@
+/* Admin Styles for Google Calendar Events */
+
+/* General Styles */
+.gcal-settings-container {
+    margin-top: 1.5rem;
+    max-width: 800px;
+}
+
+.gcal-settings-container h2 {
+    margin: 1.5em 0 0.5em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid #ddd;
+}
+
+.gcal-settings-container h3 {
+    margin: 1.2em 0 0.5em;
+    color: #23282d;
+}
+
+/* Form Elements */
+.gcal-settings-container input[type="text"],
+.gcal-settings-container input[type="url"],
+.gcal-settings-container input[type="number"],
+.gcal-settings-container select,
+.gcal-settings-container textarea {
+    width: 100%;
+    max-width: 400px;
+    margin: 0.25em 0;
+}
+
+.gcal-settings-container .regular-text {
+    width: 400px;
+}
+
+.gcal-settings-container .small-text {
+    width: 80px;
+}
+
+/* Tabs */
+.gcal-tabs {
+    margin: 1em 0 1.5em;
+    border-bottom: 1px solid #ccc;
+}
+
+.gcal-tab {
+    display: inline-block;
+    padding: 8px 16px;
+    margin-right: 5px;
+    background: #f1f1f1;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    text-decoration: none;
+    color: #555;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: -1px;
+}
+
+.gcal-tab-active {
+    background: #fff;
+    border-bottom: 1px solid #fff;
+    color: #000;
+    font-weight: 600;
+}
+
+/* Import Section */
+.gcal-import-container {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    margin-top: 20px;
+}
+
+.gcal-import-actions {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f9f9f9;
+    border-left: 4px solid #0073aa;
+}
+
+.gcal-status {
+    margin-left: 10px;
+    font-weight: 600;
+}
+
+.gcal-status.success {
+    color: #46b450;
+}
+
+.gcal-status.error {
+    color: #dc3232;
+}
+
+/* Logs */
+.gcal-import-logs {
+    margin-top: 30px;
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+}
+
+.gcal-import-log-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e5e5e5;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.gcal-import-log-list li {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    margin: 0;
+    font-size: 13px;
+}
+
+.gcal-import-log-list li:last-child {
+    border-bottom: none;
+}
+
+.gcal-import-log-list li.success {
+    border-left: 4px solid #46b450;
+    padding-left: 8px;
+}
+
+.gcal-import-log-list li.error {
+    border-left: 4px solid #dc3232;
+    padding-left: 8px;
+}
+
+/* Help Section */
+.gcal-help-container h3 {
+    margin-top: 1.8em;
+}
+
+.gcal-help-container code {
+    background: #f0f0f1;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.gcal-help-container pre {
+    background: #f5f5f5;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    overflow-x: auto;
+}
+
+.gcal-help-container table {
+    border-collapse: collapse;
+    margin: 1em 0;
+    width: 100%;
+    border: 1px solid #e2e4e7;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.gcal-help-container th,
+.gcal-help-container td {
+    padding: 8px 12px;
+    text-align: left;
+    border: 1px solid #e2e4e7;
+}
+
+.gcal-help-container th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.gcal-help-container tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .gcal-settings-container input[type="text"],
+    .gcal-settings-container input[type="url"],
+    .gcal-settings-container input[type="number"],
+    .gcal-settings-container select,
+    .gcal-settings-container textarea {
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    .gcal-settings-container .regular-text {
+        width: 100%;
+    }
+    
+    .gcal-tab {
+        display: block;
+        margin-bottom: 5px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+    
+    .gcal-tab-active {
+        border-bottom: 1px solid #ccc;
+    }
+}

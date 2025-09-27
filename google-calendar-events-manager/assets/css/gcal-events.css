@@ -1,0 +1,192 @@
+/* Main Events Container */
+.gcal-events-container {
+    font-family: 'Open Sans', sans-serif;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+/* Month Group */
+.gcal-month-group {
+    margin-bottom: 2.5rem;
+}
+
+.gcal-month-title {
+    font-size: 1.5rem;
+    color: #333;
+    margin: 0 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #eee;
+}
+
+/* Event Item */
+.gcal-event {
+    margin-bottom: 1.5rem;
+    transition: all 0.2s ease;
+}
+
+.gcal-event-inner {
+    display: flex;
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.gcal-event-inner:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Event Date */
+.gcal-event-date {
+    background: #f5f7fa;
+    padding: 1rem;
+    text-align: center;
+    min-width: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-right: 1px solid #eee;
+}
+
+.gcal-event-day {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1;
+}
+
+.gcal-event-month {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #7f8c8d;
+    letter-spacing: 1px;
+    margin-top: 0.3rem;
+}
+
+/* Event Content */
+.gcal-event-content {
+    flex: 1;
+    padding: 1.2rem 1.5rem;
+}
+
+.gcal-event-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.gcal-event-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+.gcal-event-location,
+.gcal-event-time {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.gcal-event-location i,
+.gcal-event-time i {
+    color: #3498db;
+    font-size: 0.9em;
+}
+
+.gcal-event-description {
+    color: #555;
+    margin-top: 0.8rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* No Events Message */
+.gcal-no-events {
+    text-align: center;
+    padding: 2rem;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+/* Responsive Styles */
+@media (max-width: 600px) {
+    .gcal-event-inner {
+        flex-direction: column;
+    }
+    
+    .gcal-event-date {
+        flex-direction: row;
+        justify-content: center;
+        gap: 1rem;
+        padding: 0.8rem;
+        border-right: none;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .gcal-event-day,
+    .gcal-event-month {
+        display: inline-block;
+    }
+    
+    .gcal-event-day {
+        font-size: 1.4rem;
+    }
+    
+    .gcal-event-month {
+        font-size: 0.8rem;
+        margin-top: 0;
+        align-self: center;
+    }
+    
+    .gcal-event-content {
+        padding: 1rem;
+    }
+    
+    .gcal-event-meta {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+}
+
+/* Loading State */
+.gcal-loading {
+    text-align: center;
+    padding: 2rem;
+    color: #7f8c8d;
+}
+
+.gcal-loading:after {
+    content: "";
+    display: inline-block;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: #3498db;
+    animation: gcal-spin 0.8s ease-in-out infinite;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
+@keyframes gcal-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Error State */
+.gcal-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+    border: 1px solid #f5c6cb;
+}
