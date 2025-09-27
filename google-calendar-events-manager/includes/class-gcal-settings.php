@@ -74,52 +74,58 @@ class GCAL_Settings {
         register_setting(
             'gcal_settings_group',
             'gcal_settings',
-            [$this, 'sanitize_settings']
+            ['sanitize_callback' => [$this, 'sanitize_settings']]
         );
         
-        // General Settings Section
         add_settings_section(
             'gcal_general_section',
             __('Allgemeine Einstellungen', 'gcal-events'),
             [$this, 'render_general_section_info'],
-            $this->page_slug
+            'gcal-settings'
         );
         
-        // ICS URL Field
         add_settings_field(
             'ics_url',
-            __('ICS URL', 'gcal-events'),
+            __('ICS-URL', 'gcal-events'),
             [$this, 'render_ics_url_field'],
-            $this->page_slug,
+            'gcal-settings',
             'gcal_general_section'
         );
         
-        // Cache Duration Field
+        add_settings_field(
+            'theme',
+            __('Design', 'gcal-events'),
+            [$this, 'render_theme_field'],
+            'gcal-settings',
+            'gcal_general_section'
+        );
+        
         add_settings_field(
             'cache_duration',
             __('Cache-Dauer (Stunden)', 'gcal-events'),
             [$this, 'render_cache_duration_field'],
-            $this->page_slug,
+            'gcal-settings',
             'gcal_general_section'
         );
         
-        // Date Format Field
         add_settings_field(
             'date_format',
             __('Datumsformat', 'gcal-events'),
             [$this, 'render_date_format_field'],
-            $this->page_slug,
+            'gcal-settings',
             'gcal_general_section'
         );
         
-        // Time Format Field
         add_settings_field(
             'time_format',
             __('Zeitformat', 'gcal-events'),
             [$this, 'render_time_format_field'],
-            $this->page_slug,
-            'gcal_display_section'
+            'gcal-settings',
+            'gcal_general_section'
         );
+        
+        // Add preview styles
+        add_action('admin_footer', [$this, 'add_theme_preview_styles']);
     }
     
     public function sanitize_settings($input) {
@@ -135,6 +141,12 @@ class GCAL_Settings {
                     wp_schedule_event(time() + 3600, 'daily', 'gcal_daily_import');
                 }
             }
+        }
+        
+        // Sanitize theme selection
+        if (isset($input['theme'])) {
+            $allowed_themes = ['default', 'modern'];
+            $sanitized['theme'] = in_array($input['theme'], $allowed_themes) ? $input['theme'] : 'default';
         }
         
         $sanitized['cache_duration'] = isset($input['cache_duration']) 
@@ -326,7 +338,109 @@ class GCAL_Settings {
     
     // Section Render Functions
     public function render_general_section_info() {
-        _e('Allgemeine Einstellungen für den Google Kalender Import.', 'gcal-events');
+        echo '<p>' . __('Allgemeine Einstellungen für das Google Calendar Plugin.', 'gcal-events') . '</p>';
+    }
+    
+    /**
+     * Render theme selection field
+     */
+    public function render_theme_field() {
+        $options = get_option('gcal_settings', []);
+        $current_theme = $options['theme'] ?? 'default';
+        
+        $themes = [
+            'default' => __('Standard-Design', 'gcal-events'),
+            'modern' => __('Modernes Design', 'gcal-events')
+        ];
+        
+        echo '<select id="gcal_theme" name="gcal_settings[theme]">';
+        foreach ($themes as $value => $label) {
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($value),
+                selected($current_theme, $value, false),
+                esc_html($label)
+            );
+        }
+        echo '</select>';
+        echo '<p class="description">' . __('Wählen Sie das gewünschte Design für die Event-Liste.', 'gcal-events') . '</p>';
+        
+        // Add theme preview
+        echo '<div class="gcal-theme-previews">';
+        foreach ($themes as $value => $label) {
+            $active_class = $current_theme === $value ? 'active' : '';
+            echo sprintf(
+                '<div class="gcal-theme-preview %s" data-theme="%s">
+                    <div class="gcal-theme-preview-inner">
+                        <div class="gcal-theme-name">%s</div>
+                        <div class="gcal-theme-screenshot">
+                            <img src="%s" alt="%s">
+                        </div>
+                    </div>
+                </div>',
+                esc_attr($active_class),
+                esc_attr($value),
+                esc_html($label),
+                esc_url(GCAL_EVENTS_PLUGIN_URL . 'assets/images/theme-' . $value . '.jpg'),
+                esc_attr($label)
+            );
+        }
+        echo '</div>';
+    }
+    
+    /**
+     * Add theme preview styles
+     */
+    public function add_theme_preview_styles() {
+        $screen = get_current_screen();
+        if ($screen->id !== 'settings_page_gcal-settings') {
+            return;
+        }
+        ?>
+        <style>
+        .gcal-theme-previews {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .gcal-theme-preview {
+            width: 200px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .gcal-theme-preview:hover,
+        .gcal-theme-preview.active {
+            border-color: #0073aa;
+            box-shadow: 0 0 5px rgba(0, 115, 170, 0.5);
+        }
+        .gcal-theme-preview-inner {
+            padding: 10px;
+        }
+        .gcal-theme-name {
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .gcal-theme-screenshot img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        </style>
+        <script>
+        jQuery(document).ready(function($) {
+            $('.gcal-theme-preview').on('click', function() {
+                var theme = $(this).data('theme');
+                $('#gcal_theme').val(theme);
+                $('.gcal-theme-preview').removeClass('active');
+                $(this).addClass('active');
+            });
+        });
+        </script>
+        <?php
     }
     
     // Field Render Functions

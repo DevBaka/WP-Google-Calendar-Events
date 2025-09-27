@@ -3,7 +3,7 @@
  * Plugin Name: Google Calendar Events Manager
  * Description: Imports and displays events from Google Calendar
  * Version: 1.0.0
- * Author: Your Name
+ * Author: DevBaka
  * License: GPL-2.0+
  * Text Domain: gcal-events
  */
@@ -26,6 +26,35 @@ require_once GCAL_EVENTS_PLUGIN_DIR . 'includes/class-gcal-settings.php';
 
 // Activation hook
 register_activation_hook(__FILE__, ['GCAL_DB', 'create_events_table']);
+
+// Enqueue frontend styles
+function gcal_enqueue_styles() {
+    $options = get_option('gcal_settings', []);
+    $theme = $options['theme'] ?? 'default';
+    
+    // Enqueue base styles
+    wp_enqueue_style(
+        'gcal-events-style',
+        GCAL_EVENTS_PLUGIN_URL . 'assets/css/gcal-events.css',
+        [],
+        GCAL_EVENTS_VERSION
+    );
+    
+    // Enqueue theme specific styles if not default
+    if ($theme !== 'default') {
+        wp_enqueue_style(
+            'gcal-events-theme-' . $theme,
+            GCAL_EVENTS_PLUGIN_URL . 'assets/css/gcal-events-theme-' . $theme . '.css',
+            ['gcal-events-style'],
+            GCAL_EVENTS_VERSION
+        );
+    }
+    
+    // Add inline style for theme class
+    $custom_css = ".gcal-events-container { --gcal-theme: {$theme}; }";
+    wp_add_inline_style('gcal-events-style', $custom_css);
+}
+add_action('wp_enqueue_scripts', 'gcal_enqueue_styles');
 
 // Initialize the plugin
 function gcal_init() {

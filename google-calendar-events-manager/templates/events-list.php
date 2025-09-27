@@ -39,7 +39,12 @@ if (!isset($events)) {
 }
 ?>
 
-<div class="gcal-events-container">
+<?php
+// Get current theme
+$options = get_option('gcal_settings', []);
+$theme = isset($options['theme']) && $options['theme'] === 'modern' ? 'modern' : 'default';
+?>
+<div class="gcal-events-container theme-<?php echo esc_attr($theme); ?>">
     <?php if (empty($events)) : ?>
         <p class="gcal-no-events"><?php _e('Keine bevorstehenden Veranstaltungen.', 'gcal-events'); ?></p>
     <?php else : ?>
