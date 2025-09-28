@@ -1,0 +1,382 @@
+/* Modern Expand Theme for Google Calendar Events */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap');
+
+.events-container.theme-modern-expand {
+    font-family: 'Montserrat', 'Open Sans', sans-serif;
+    max-width: 11700px;
+    margin: 0;
+    padding: 8px;
+    background-color: #1a1a1a;
+    color: #fff;
+    box-sizing: border-box;
+    font-size: 13px;
+}
+
+.events-container.theme-modern-expand .event-calendar {
+    font-size: 13px;
+    max-width: 100%;
+    margin: 0;
+    padding: 12px 15px;
+    background-color: #222;
+    border-radius: 6px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
+
+.events-container.theme-modern-expand .spacer {
+    border-bottom: 1px solid #333;
+    margin: 0;
+}
+
+.events-container.theme-modern-expand .event-list {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.events-container.theme-modern-expand .month-header {
+    font-size: 1.1em;
+    color: #fff;
+    margin: 15px 0 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid #333;
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.events-container.theme-modern-expand .event-item {
+    margin: 0;
+    position: relative;
+}
+
+.events-container.theme-modern-expand .date-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    text-align: center;
+    margin-right: 8px;
+    flex-shrink: 0;
+    position: relative;
+    left: -1px;
+}
+
+.events-container.theme-modern-expand .day {
+    font-size: 1.2em;
+    line-height: 1;
+    display: block;
+    color: #00a2ff;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 400;
+    margin: 0;
+}
+
+.events-container.theme-modern-expand .month {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    color: #00a2ff;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    letter-spacing: 0.05px;
+    line-height: 1;
+    display: block;
+    margin-top: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.events-container.theme-modern-expand .event {
+    display: block;
+    margin: 0 0 3px 0;
+    padding: 3px 8px;
+    position: relative;
+    cursor: pointer;
+    background-color: #2a2f36;
+    border-radius: 2px;
+    transition: all 0.15s ease;
+    border-left: 2px solid #00a2ff;
+    min-height: 36px;
+}
+
+.events-container.theme-modern-expand .event:hover {
+    background-color: #333940;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.events-container.theme-modern-expand .event-inner {
+    display: flex;
+    align-items: center;
+    min-height: 30px;
+}
+
+.events-container.theme-modern-expand .detail-container {
+    flex: 1;
+    min-width: 0;
+}
+
+.events-container.theme-modern-expand .title {
+    display: block;
+    font-size: 1.3em;
+    font-weight: 500;
+    margin: 0;
+    color: #fff;
+    font-family: 'Montserrat', 'Open Sans', sans-serif;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.2px;
+}
+
+.events-container.theme-modern-expand .time {
+    font-size: 0.75em;
+    color: #bbb;
+    font-family: 'Open Sans', sans-serif;
+    opacity: 0.9;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.events-container.theme-modern-expand .event-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    background-color: #2a2f36;
+    margin: 10px 0 0 0;
+    padding: 0 20px;
+    border-radius: 0 0 6px 6px;
+}
+
+.events-container.theme-modern-expand .event-item.active .event-details {
+    max-height: 1000px;
+    padding: 20px;
+    margin: 10px 0 0 0;
+}
+
+.events-container.theme-modern-expand .event-info {
+    padding: 5px 0 0;
+}
+
+.events-container.theme-modern-expand .info-row {
+    display: flex;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.events-container.theme-modern-expand .info-label {
+    min-width: 80px;
+    color: #4DD0E1;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.events-container.theme-modern-expand .info-value {
+    color: #fff;
+    flex: 1;
+}
+
+.events-container.theme-modern-expand .event-description {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: #eee;
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+/* Color variations for events */
+.events-container.theme-modern-expand .event-item:nth-child(6n+1) .event {
+    border-left-color: #15cb43;
+}
+
+.events-container.theme-modern-expand .event-item:nth-child(6n+2) .event {
+    border-left-color: #FDD835;
+}
+
+.events-container.theme-modern-expand .event-item:nth-child(6n+3) .event {
+    border-left-color: #F44336;
+}
+
+.events-container.theme-modern-expand .event-item:nth-child(6n+4) .event {
+    border-left-color: #9C27B0;
+}
+
+.events-container.theme-modern-expand .event-item:nth-child(6n+5) .event {
+    border-left-color: #FF9800;
+}
+
+.events-container.theme-modern-expand .event-item:nth-child(6n+6) .event {
+    border-left-color: #00BCD4;
+}
+
+/* Month header */
+.events-container.theme-modern-expand .month-header {
+    font-size: 1.4rem;
+    color: #fff;
+    margin: 30px 0 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'Oswald', sans-serif;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .events-container.theme-modern-expand {
+        padding: 10px;
+    }
+    
+    .events-container.theme-modern-expand .event-calendar {
+        padding: 15px;
+    }
+    
+    .events-container.theme-modern-expand .event-inner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .events-container.theme-modern-expand .date-container {
+        margin: 0 0 5px 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .events-container.theme-modern-expand .date {
+        flex-direction: row;
+        align-items: center;
+    }
+    
+    .events-container.theme-modern-expand .title {
+        font-size: 1.1rem;
+    }
+}
+
+.date-container {
+    display: inline-block;
+    width: 5em;
+    padding-left: 13px;
+    padding-right: 8px;
+    padding-bottom: 2px;
+    margin-right: 6px;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    color: white;
+}
+
+.date {
+    font-size: 2.5em;
+    display: block;
+}
+
+.day {
+    margin-left: 33%;
+}
+
+.month {
+    display: block;
+    font-size: 0.4em;
+    font-weight: 400;
+    margin-top: -0.2em;
+    text-transform: uppercase;
+}
+
+.detail-container {
+    display: inline-block;
+    vertical-align: top;
+    padding-top: 3px;
+    margin-left: 2%;
+}
+
+.title {
+    text-transform: uppercase;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 400;
+    font-size: 1.5em;
+    color: white;
+}
+
+.description {
+    display: block;
+    font-size: 0.9em;
+    color: #4DD0E1;
+}
+
+.openEv {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    font-size: 1em;
+    color: white;
+    background-color: #2c3136;
+    transition: all 0.3s ease-out;
+    padding: 0 15px;
+    margin: 0;
+    border-left: 3px solid transparent;
+    visibility: hidden;
+    transform: translateY(-10px);
+}
+
+.openEv.open {
+    max-height: 1000px; /* Adjust this value based on your content */
+    opacity: 1;
+    padding: 15px;
+    border-left-color: inherit; /* Inherit the border color from parent */
+    margin: 0 0 10px 0;
+    visibility: visible;
+    transform: translateY(0);
+    transition: all 0.3s ease-out, visibility 0s 0s;
+}
+
+/* Add some spacing for the content inside */
+.openEv > span {
+    display: block;
+    padding: 10px 5px;
+}
+
+/* Style the event description */
+.event-description {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .date-container {
+        width: 4em;
+    }
+    
+    .date {
+        font-size: 2em;
+    }
+    
+    .title {
+        font-size: 1.2em;
+    }
+}
+
+@media (max-width: 480px) {
+    .date-container {
+        width: 3.5em;
+    }
+    
+    .day {
+        margin-left: 25%;
+    }
+    
+    .title {
+        font-size: 1em;
+    }
+    
+    .description {
+        font-size: 0.8em;
+    }
+}

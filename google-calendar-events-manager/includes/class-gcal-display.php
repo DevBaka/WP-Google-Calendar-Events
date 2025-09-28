@@ -23,6 +23,11 @@ class GCAL_Display {
         // Only load on pages that use the shortcode
         global $post;
         if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'gcal_events')) {
+            // Get current theme
+            $options = get_option('gcal_settings', []);
+            $theme = isset($options['theme']) ? $options['theme'] : 'default';
+            
+            // Enqueue base styles
             wp_enqueue_style(
                 'gcal-events',
                 GCAL_PLUGIN_URL . 'assets/css/gcal-events.css',
@@ -30,6 +35,41 @@ class GCAL_Display {
                 GCAL_VERSION
             );
             
+            // Enqueue theme-specific styles
+            if ($theme === 'modern') {
+                wp_enqueue_style(
+                    'gcal-events-theme-modern',
+                    GCAL_PLUGIN_URL . 'assets/css/gcal-events-theme-modern.css',
+                    ['gcal-events'],
+                    GCAL_VERSION
+                );
+            } elseif ($theme === 'modern-expand') {
+                wp_enqueue_style(
+                    'gcal-events-theme-modern-expand',
+                    GCAL_PLUGIN_URL . 'assets/css/gcal-events-theme-modern-expand.css',
+                    ['gcal-events'],
+                    GCAL_VERSION
+                );
+                
+                // Enqueue Google Fonts
+                wp_enqueue_style(
+                    'gcal-events-google-fonts',
+                    'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Oswald:wght@400;700&display=swap',
+                    [],
+                    null
+                );
+                
+                // Enqueue modern-expand specific JS
+                wp_enqueue_script(
+                    'gcal-events-modern-expand',
+                    GCAL_PLUGIN_URL . 'assets/js/gcal-events-modern-expand.js',
+                    ['jquery'],
+                    GCAL_VERSION,
+                    true
+                );
+            }
+            
+            // Enqueue base script
             wp_enqueue_script(
                 'gcal-events',
                 GCAL_PLUGIN_URL . 'assets/js/gcal-events.js',

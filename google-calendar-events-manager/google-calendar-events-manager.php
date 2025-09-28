@@ -25,6 +25,7 @@ require_once GCAL_PLUGIN_DIR . 'includes/class-gcal-db.php';
 require_once GCAL_PLUGIN_DIR . 'includes/class-gcal-importer.php';
 require_once GCAL_PLUGIN_DIR . 'includes/class-gcal-display.php';
 require_once GCAL_PLUGIN_DIR . 'includes/class-gcal-settings.php';
+require_once GCAL_PLUGIN_DIR . 'includes/class-gcal-json-export.php';
 
 // Enqueue frontend styles
 function gcal_enqueue_styles() {
@@ -39,14 +40,34 @@ function gcal_enqueue_styles() {
         GCAL_VERSION
     );
     
-    // Enqueue theme specific styles if not default
+    // Enqueue theme specific styles and scripts if not default
     if ($theme !== 'default') {
+        // Enqueue theme CSS
         wp_enqueue_style(
             'gcal-events-theme-' . $theme,
             GCAL_PLUGIN_URL . 'assets/css/gcal-events-theme-' . $theme . '.css',
             ['gcal-events-style'],
             GCAL_VERSION
         );
+        
+        // Enqueue theme-specific JavaScript for modern-expand
+        if ($theme === 'modern-expand') {
+            wp_enqueue_script(
+                'gcal-events-script-' . $theme,
+                GCAL_PLUGIN_URL . 'assets/js/gcal-events-modern-expand.js',
+                ['jquery'],
+                GCAL_VERSION,
+                true
+            );
+            
+            // Add Google Fonts
+            wp_enqueue_style(
+                'gcal-events-google-fonts',
+                'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Oswald:wght@400;700&display=swap',
+                [],
+                null
+            );
+        }
     }
     
     // Add inline style for theme class

@@ -144,8 +144,36 @@ class GCAL_Settings {
             ]
         );
         
+        // JSON Export Settings
+        add_settings_field(
+            'enable_json_export',
+            __('JSON Export aktivieren', 'gcal-events'),
+            [$this, 'render_json_export_field'],
+            'gcal-settings',
+            'gcal_general_section',
+            [
+                'label_for' => 'enable_json_export',
+                'description' => __('Aktivieren, um eine JSON-Datei mit den Kalenderereignissen bereitzustellen', 'gcal-events')
+            ]
+        );
+        
+        add_settings_field(
+            'json_export_slug',
+            __('JSON Datei-Name', 'gcal-events'),
+            [$this, 'render_json_slug_field'],
+            'gcal-settings',
+            'gcal_general_section',
+            [
+                'label_for' => 'json_export_slug',
+                'description' => __('Der Dateiname für den JSON-Export (ohne .json)', 'gcal-events')
+            ]
+        );
+        
         // Add preview styles
         add_action('admin_footer', [$this, 'add_theme_preview_styles']);
+        
+        // Register JSON endpoint
+        add_action('init', [$this, 'register_json_endpoint']);
     }
     
     public function sanitize_settings($input) {
@@ -165,7 +193,7 @@ class GCAL_Settings {
         
         // Sanitize theme selection
         if (isset($input['theme'])) {
-            $allowed_themes = ['default', 'modern'];
+            $allowed_themes = ['default', 'modern', 'modern-expand'];
             $sanitized['theme'] = in_array($input['theme'], $allowed_themes) ? $input['theme'] : 'default';
         }
         
@@ -186,6 +214,12 @@ class GCAL_Settings {
         $sanitized['lookahead_months'] = isset($input['lookahead_months']) 
             ? max(1, min(12, (int)$input['lookahead_months'])) // Limit between 1-12 months
             : 3; // Default to 3 months
+            
+        // JSON Export settings
+        $sanitized['enable_json_export'] = isset($input['enable_json_export']) ? 1 : 0;
+        $sanitized['json_export_slug'] = !empty($input['json_export_slug']) 
+            ? sanitize_title($input['json_export_slug']) 
+            : 'calendar-events';
         
         add_settings_error(
             'gcal_settings',
@@ -373,13 +407,13 @@ class GCAL_Settings {
     public function render_theme_field() {
         $options = get_option('gcal_settings', []);
         $current_theme = $options['theme'] ?? 'default';
-        
         $themes = [
             'default' => __('Standard-Design', 'gcal-events'),
-            'modern' => __('Dunkles Design', 'gcal-events')
+            'modern' => __('Dunkles Design', 'gcal-events'),
+            'modern-expand' => __('Modernes Expand-Design', 'gcal-events')
         ];
         
-        echo '<select id="gcal_theme" name="gcal_settings[theme]">';
+        echo '<select name="gcal_settings[theme]" id="gcal_theme_select" class="regular-text">';
         foreach ($themes as $value => $label) {
             printf(
                 '<option value="%s" %s>%s</option>',
@@ -389,7 +423,8 @@ class GCAL_Settings {
             );
         }
         echo '</select>';
-        echo '<p class="description">' . __('Wählen Sie das gewünschte Design für die Event-Liste.', 'gcal-events') . '</p>';
+        
+        echo '<p class="description">' . __('Wählen Sie ein Design für die Event-Anzeige aus.', 'gcal-events') . '</p>';
         
         // Add theme preview
         echo '<div class="gcal-theme-previews">';
@@ -458,12 +493,24 @@ class GCAL_Settings {
         </style>
         <script>
         jQuery(document).ready(function($) {
+            // Handle preview click
             $('.gcal-theme-preview').on('click', function() {
                 var theme = $(this).data('theme');
-                $('#gcal_theme').val(theme);
-                $('.gcal-theme-preview').removeClass('active');
-                $(this).addClass('active');
+                $('#gcal_theme_select').val(theme);
+                updateActivePreview(theme);
             });
+            
+            // Handle dropdown change
+            $('#gcal_theme_select').on('change', function() {
+                var theme = $(this).val();
+                updateActivePreview(theme);
+            });
+            
+            // Function to update active preview
+            function updateActivePreview(theme) {
+                $('.gcal-theme-preview').removeClass('active');
+                $('.gcal-theme-preview[data-theme="' + theme + '"]').addClass('active');
+            }
         });
         </script>
         <?php
@@ -604,16 +651,59 @@ class GCAL_Settings {
         <input type="number" 
                id="lookahead_months" 
                name="gcal_settings[lookahead_months]" 
+               value="<?php echo esc_attr($lookahead); ?>" 
                min="1" 
                max="12" 
-               step="1" 
-               value="<?php echo esc_attr($lookahead); ?>" 
-               class="small-text">
+               class="small-text" />
+        <p class="description"><?php echo esc_html($args['description'] ?? ''); ?></p>
+        <?php
+    }
+    
+    /**
+     * Render JSON export field
+     */
+    public function render_json_export_field($args) {
+        $enabled = $this->options['enable_json_export'] ?? 0;
+        $description = $args['description'] ?? '';
+        ?>
+        <label>
+            <input type="checkbox" 
+                   id="enable_json_export" 
+                   name="gcal_settings[enable_json_export]" 
+                   value="1" 
+                   <?php checked(1, $enabled); ?> />
+            <?php _e('Aktivieren', 'gcal-events'); ?>
+        </label>
+        <p class="description"><?php echo esc_html($description); ?></p>
+        <?php
+    }
+    
+    /**
+     * Render JSON slug field
+     */
+    public function render_json_slug_field($args) {
+        $slug = $this->options['json_export_slug'] ?? 'calendar-events';
+        $description = $args['description'] ?? '';
+        $json_url = home_url('/' . $slug . '.json');
+        ?>
+        <input type="text" 
+               id="json_export_slug" 
+               name="gcal_settings[json_export_slug]" 
+               value="<?php echo esc_attr($slug); ?>" 
+               class="regular-text" />
         <p class="description">
-            <?php echo esc_html($args['description'] ?? ''); ?>
+            <?php echo esc_html($description); ?>
+            <?php if (!empty($slug)) : ?>
+                <br>
+                <strong><?php _e('JSON-URL:', 'gcal-events'); ?></strong> 
+                <a href="<?php echo esc_url($json_url); ?>" target="_blank">
+                    <?php echo esc_url($json_url); ?>
+                </a>
+            <?php endif; ?>
         </p>
         <?php
     }
+    
     
     // Helper method to add an import log entry
     public static function add_import_log($message, $success = true) {
