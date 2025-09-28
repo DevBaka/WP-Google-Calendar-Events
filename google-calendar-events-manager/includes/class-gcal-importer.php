@@ -296,6 +296,8 @@ class GCAL_Importer {
         $text = str_replace('\\\\', '\\', $text);
         $text = str_replace('\\n', "\n", $text);
         $text = str_replace('\\,', ',', $text);
+        // Remove any <br> tags and replace with newlines
+        $text = str_ireplace(['<br>', '<br/>', '<br />'], "\n", $text);
         $text = str_replace('\\;', ';', $text);
         return $text;
     }

@@ -145,7 +145,7 @@ $theme = isset($options['theme']) && $options['theme'] === 'modern' ? 'modern' :
                         </div>
                         <?php if (!empty($event['description'])) : ?>
                             <div class="gcal-event-description">
-                                <?php echo nl2br(esc_html($event['description'])); ?>
+                                <?php echo esc_html($event['description']); ?>
                             </div>
                         <?php endif; ?>
                     </div>
