@@ -25,16 +25,16 @@ class GCAL_Display {
         if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'gcal_events')) {
             wp_enqueue_style(
                 'gcal-events',
-                GCAL_EVENTS_PLUGIN_URL . 'assets/css/gcal-events.css',
+                GCAL_PLUGIN_URL . 'assets/css/gcal-events.css',
                 [],
-                GCAL_EVENTS_VERSION
+                GCAL_VERSION
             );
             
             wp_enqueue_script(
                 'gcal-events',
-                GCAL_EVENTS_PLUGIN_URL . 'assets/js/gcal-events.js',
+                GCAL_PLUGIN_URL . 'assets/js/gcal-events.js',
                 ['jquery'],
-                GCAL_EVENTS_VERSION,
+                GCAL_VERSION,
                 true
             );
             
@@ -53,7 +53,7 @@ class GCAL_Display {
         ], $atts, 'gcal_events');
         
         ob_start();
-        include GCAL_EVENTS_PLUGIN_DIR . 'templates/events-list.php';
+        include GCAL_PLUGIN_DIR . 'templates/events-list.php';
         return ob_get_clean();
     }
     
@@ -77,13 +77,54 @@ class GCAL_Display {
     }
     
     private function get_events($limit = 0, $show_past = false) {
-        $events = $this->db->get_events($limit);
+        // Get events from database
+        $events = $this->db->get_events($limit, $show_past);
         
+        // Get WordPress timezone
+        $timezone = wp_timezone();
+        $now = new DateTime('now', $timezone);
+        $timezone_string = $timezone->getName();
+        
+        // Process each event for display
+        foreach ($events as &$event) {
+            try {
+                // Check if the time is already in the correct timezone
+                // We'll assume the time is already in the site's timezone from the importer
+                $event_start = new DateTime($event['start_time'], $timezone);
+                $event_end = new DateTime($event['end_time'], $timezone);
+                
+                // Update the timestamps (no timezone conversion needed)
+                $event['start_time'] = $event_start->format('Y-m-d H:i:s');
+                $event['end_time'] = $event_end->format('Y-m-d H:i:s');
+                
+                // Add formatted timestamps for easier access
+                $event['_start_timestamp'] = $event_start->getTimestamp();
+                $event['_end_timestamp'] = $event_end->getTimestamp();
+                
+            } catch (Exception $e) {
+                // Skip invalid dates
+                error_log('GCAL Display: Error processing event date - ' . $e->getMessage());
+                continue;
+            }
+        }
+        unset($event); // Break the reference
+        
+        // Filter out past events if needed
         if (!$show_past) {
-            $now = current_time('mysql');
-            $events = array_filter($events, function($event) use ($now) {
-                return $event['end_time'] >= $now;
+            $now_timestamp = $now->getTimestamp();
+            $events = array_filter($events, function($event) use ($now_timestamp) {
+                return $event['_end_timestamp'] >= $now_timestamp;
             });
+        }
+        
+        // Sort events by start time
+        usort($events, function($a, $b) {
+            return $a['_start_timestamp'] - $b['_start_timestamp'];
+        });
+        
+        // Apply limit after all filtering and sorting
+        if ($limit > 0) {
+            $events = array_slice($events, 0, $limit);
         }
         
         return $events;
@@ -98,12 +139,16 @@ class GCAL_Display {
         $current_month = '';
         $first_item = true;
         
+        // Get the site's timezone
+        $timezone = wp_timezone();
+        
         foreach ($events as $event) {
-            $date = new DateTime($event['start_time']);
-            $date_end = new DateTime($event['end_time']);
+            $date = new DateTime($event['start_time'], $timezone);
+            $date_end = new DateTime($event['end_time'], $timezone);
             
             $day = $date->format('d');
-            $month = $this->months_de[$date->format('m')];
+            $month_num = $date->format('m');
+            $month_name = $this->months_de[$month_num];
             $year = $date->format('Y');
             $start_time = $date->format('H:i');
             $end_time = $date_end->format('H:i');
@@ -116,7 +161,7 @@ class GCAL_Display {
                     echo '</div>'; // Close previous month group
                 }
                 echo '<div class="gcal-month-group">';
-                echo '<h3 class="gcal-month-title">' . esc_html(ucfirst($month) . ' ' . $year) . '</h3>';
+                echo '<h3 class="gcal-month-title">' . esc_html(ucfirst($month_name) . ' ' . $year) . '</h3>';
                 $current_month = $event_month;
                 $first_item = false;
             }
@@ -125,7 +170,7 @@ class GCAL_Display {
                 <div class="gcal-event-inner">
                     <div class="gcal-event-date">
                         <span class="gcal-event-day"><?php echo esc_html($day); ?></span>
-                        <span class="gcal-event-month"><?php echo esc_html(substr($month, 0, 3)); ?></span>
+                        <span class="gcal-event-month"><?php echo esc_html(substr($month_name, 0, 3)); ?></span>
                     </div>
                     <div class="gcal-event-content">
                         <h4 class="gcal-event-title"><?php echo esc_html($event['summary']); ?></h4>

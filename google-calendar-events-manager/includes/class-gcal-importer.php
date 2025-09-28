@@ -101,6 +101,8 @@ class GCAL_Importer {
         $lines = explode("\n", $ics_content);
         $event = [];
         $in_event = false;
+        $rrule = null;
+        $processed_uids = []; // Track processed UIDs to prevent duplicates
         
         foreach ($lines as $line) {
             $line = trim($line);
@@ -114,12 +116,29 @@ class GCAL_Importer {
             
             if (strpos($line, 'END:VEVENT') !== false) {
                 if (!empty($event) && !empty($event['uid'])) {
-                    // Skip events that have already ended
-                    if (isset($event['end_time']) && $event['end_time'] > current_time('mysql')) {
-                        $events[] = $event;
+                    // Skip if we've already processed this UID to prevent duplicates
+                    if (in_array($event['uid'], $processed_uids)) {
+                        $in_event = false;
+                        continue;
+                    }
+                    
+                    // Add the original event to processed UIDs
+                    $processed_uids[] = $event['uid'];
+                    
+                    if (isset($event['rrule'])) {
+                        // For recurring events, only generate future instances
+                        // The original event is already included in the instances
+                        $recurring_events = $this->generate_recurring_instances($event);
+                        $events = array_merge($events, $recurring_events);
+                    } else {
+                        // Single event - only add if it's in the future
+                        if (isset($event['end_time']) && $event['end_time'] > current_time('mysql')) {
+                            $events[] = $event;
+                        }
                     }
                 }
                 $in_event = false;
+                $rrule = null;
                 continue;
             }
             
@@ -164,6 +183,18 @@ class GCAL_Importer {
                             $event['end_time'] = $this->parse_ical_date($value);
                             break;
                             
+                        case 'RRULE':
+                            $rrule = [];
+                            $pairs = explode(';', $value);
+                            foreach ($pairs as $pair) {
+                                if (strpos($pair, '=') !== false) {
+                                    list($key, $val) = explode('=', $pair, 2);
+                                    $rrule[strtoupper($key)] = $val;
+                                }
+                            }
+                            $event['rrule'] = $rrule;
+                            break;
+                            
                         case 'LAST-MODIFIED':
                         case 'DTSTAMP':
                             $event['last_modified'] = $this->parse_ical_date($value);
@@ -176,45 +207,89 @@ class GCAL_Importer {
         return $events;
     }
     
-    private function parse_ical_date($value) {
-        $is_utc = (substr($value, -1) === 'Z');
-        $date_str = str_replace('Z', '', $value);
-        
-        // Handle different date formats
-        if (strpos($date_str, 'T') !== false) {
-            // Date with time
-            $format = 'Ymd\THis';
-        } else {
-            // Date only
-            $format = 'Ymd';
-            $date_str .= 'T000000'; // Add midnight time
+    private function parse_ical_date($date_str, $timezone = null) {
+        if (empty($date_str)) {
+            return null;
         }
+        
+        $timezone = $timezone ?: $this->timezone;
+        $utc_timezone = new DateTimeZone('UTC');
+        $original_date = $date_str;
+        $date = false;
+        $log_errors = defined('WP_DEBUG') && WP_DEBUG;
+        $is_utc = false;
         
         try {
-            // Create date in the timezone it was provided in
-            $date = DateTime::createFromFormat(
-                $format, 
-                $date_str, 
-                $is_utc ? new DateTimeZone('UTC') : $this->timezone
-            );
+            // Handle different iCal date formats
+            if (preg_match('/TZID=([^:]+):(\d{8}T?\d{0,6})/', $date_str, $matches)) {
+                // Format with TZID: TZID=Europe/Berlin:20250118T220000
+                try {
+                    $timezone = new DateTimeZone($matches[1]);
+                } catch (Exception $e) {
+                    if ($log_errors) {
+                        error_log('GCAL Importer: Invalid timezone: ' . $matches[1]);
+                    }
+                }
+                $date_str = $matches[2];
+            } elseif (strpos($date_str, 'TZID=') !== false) {
+                // Fallback for other TZID formats
+                $date_str = substr($date_str, strrpos($date_str, ':') + 1);
+            }
+            
+            // Check if date ends with Z (UTC)
+            if (substr($date_str, -1) === 'Z') {
+                $is_utc = true;
+                $date_str = substr($date_str, 0, -1); // Remove Z for parsing
+            }
+            
+            // Clean up the date string
+            $date_str = preg_replace('/[^0-9T]/', '', $date_str);
+            
+            // Handle different date formats
+            if (strpos($date_str, 'T') !== false) {
+                // Date with time (YYYYMMDDTHHMMSS)
+                $format = 'Ymd\THis';
+                $date = DateTime::createFromFormat($format, $date_str, $is_utc ? $utc_timezone : $timezone);
+            } else {
+                // Date only (YYYYMMDD)
+                $date = DateTime::createFromFormat('Ymd', $date_str, $is_utc ? $utc_timezone : $timezone);
+                if ($date) {
+                    // Set to start of day
+                    $date->setTime(0, 0, 0);
+                }
+            }
             
             if ($date) {
-                // Convert to UTC for storage
-                $date->setTimezone(new DateTimeZone('UTC'));
+                // If the date was in UTC, convert to site timezone
+                if ($is_utc) {
+                    $date->setTimezone($timezone);
+                }
                 
-                // For debugging - log the conversion
-                error_log('Parsed date - Original: ' . $value . 
-                         ', Local: ' . $date->format('Y-m-d H:i:s T') . 
-                         ', UTC: ' . $date->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s T'));
+                // Only log timezone conversion in debug mode
+                if ($log_errors) {
+                    error_log(sprintf(
+                        'GCAL Importer: Date conversion - %s%s -> %s (%s)',
+                        $original_date,
+                        $is_utc ? ' (UTC)' : '',
+                        $date->format('Y-m-d H:i:s'),
+                        $timezone->getName()
+                    ));
+                }
                 
-                // Return in MySQL format in UTC
                 return $date->format('Y-m-d H:i:s');
             }
+            
+            if ($log_errors) {
+                error_log('GCAL Importer: Failed to parse date format: ' . $original_date);
+            }
+            return $original_date; // Return original string if parsing fails
+            
         } catch (Exception $e) {
-            error_log('GCAL Importer: Error parsing date: ' . $e->getMessage());
+            if ($log_errors) {
+                error_log('GCAL Importer: Date parsing error (' . $e->getMessage() . ') for: ' . $original_date);
+            }
+            return $original_date; // Return original string on error
         }
-        
-        return current_time('mysql');
     }
     
     private function unescape_ical_text($text) {
@@ -223,5 +298,212 @@ class GCAL_Importer {
         $text = str_replace('\\,', ',', $text);
         $text = str_replace('\\;', ';', $text);
         return $text;
+    }
+    
+    /**
+     * Generate recurring event instances based on RRULE
+     */
+    private function generate_recurring_instances($event) {
+        if (!isset($event['rrule'])) {
+            return [];
+        }
+        
+        $rrule = $event['rrule'];
+        $instances = [];
+        
+        // Get the lookahead period from settings (default 3 months)
+        $options = get_option('gcal_settings', []);
+        $lookahead_months = isset($options['lookahead_months']) ? 
+            max(1, min(12, intval($options['lookahead_months']))) : 3;
+            
+        // Create timezone objects
+        $site_timezone = $this->timezone;
+        
+        try {
+            // Parse the start and end times in site's timezone first
+            $start = new DateTime($event['start_time'], $site_timezone);
+            $end = new DateTime($event['end_time'], $site_timezone);
+            
+            // Calculate duration in seconds
+            $duration = $end->getTimestamp() - $start->getTimestamp();
+            
+            // Set end date in site's timezone
+            $end_date = new DateTime('now', $site_timezone);
+            $end_date->modify("+{$lookahead_months} months");
+            
+            // Get the current time in site's timezone for comparison
+            $now = new DateTime('now', $site_timezone);
+            
+            // Handle different recurrence rules
+            if (isset($rrule['FREQ']) && $rrule['FREQ'] === 'WEEKLY') {
+                $count = 0;
+                $max_instances = 100; // Safety limit
+                $interval = isset($rrule['INTERVAL']) ? max(1, intval($rrule['INTERVAL'])) : 1;
+                
+                // Get the original event's time components
+                $original_time = $start->format('H:i:s');
+                $original_day_of_week = (int)$start->format('w'); // 0 (Sun) to 6 (Sat)
+                
+                // If BYDAY is specified, use those days, otherwise use the original day of week
+                $recurrence_days = [];
+                if (isset($rrule['BYDAY'])) {
+                    $by_days = explode(',', $rrule['BYDAY']);
+                    $day_map = [
+                        'SU' => 0, 'MO' => 1, 'TU' => 2, 'WE' => 3,
+                        'TH' => 4, 'FR' => 5, 'SA' => 6
+                    ];
+                    foreach ($by_days as $day) {
+                        if (isset($day_map[$day])) {
+                            $recurrence_days[] = $day_map[$day];
+                        }
+                    }
+                } else {
+                    $recurrence_days = [$original_day_of_week];
+                }
+                
+                // Sort days to ensure consistent ordering
+                sort($recurrence_days);
+                
+                // Start from the original event date or now, whichever is later
+                $current = max($start, $now);
+                
+                // Generate instances until we reach the end date or max instances
+                while ($current <= $end_date && $count < $max_instances) {
+                    // Get the current day of week (0-6)
+                    $current_day = (int)$current->format('w');
+                    
+                    // Find the next occurrence day from our recurrence days
+                    $next_day = null;
+                    foreach ($recurrence_days as $day) {
+                        if ($day > $current_day || ($day == $current_day && $current->format('Y-m-d') > $now->format('Y-m-d'))) {
+                            $next_day = $day;
+                            break;
+                        }
+                    }
+                    
+                    // If no next day in this week, take the first day of next week
+                    if ($next_day === null && !empty($recurrence_days)) {
+                        $next_day = $recurrence_days[0];
+                        $days_to_add = 7 - $current_day + $next_day;
+                        $current->modify("+{$days_to_add} days");
+                    } elseif ($next_day !== null) {
+                        $days_to_add = ($next_day + 7 - $current_day) % 7;
+                        $current->modify("+{$days_to_add} days");
+                    } else {
+                        break; // No valid days found
+                    }
+                    
+                    // Set the time to the original event time
+                    $current->setTime(
+                        (int)substr($original_time, 0, 2), // hours
+                        (int)substr($original_time, 3, 2), // minutes
+                        (int)substr($original_time, 6, 2)  // seconds
+                    );
+                    
+                    // Only add if it's within our date range
+                    if ($current <= $end_date) {
+                        // Create a new instance for this occurrence
+                        $new_event = $event;
+                        
+                        // Set the start time
+                        $new_event['start_time'] = $current->format('Y-m-d H:i:s');
+                        
+                        // Calculate end time
+                        $new_end = clone $current;
+                        $new_end->modify("+{$duration} seconds");
+                        $new_event['end_time'] = $new_end->format('Y-m-d H:i:s');
+                        
+                        // Set a unique UID for this instance
+                        $new_event['uid'] = $event['uid'] . '_' . $current->format('Ymd');
+                        
+                        $instances[] = $new_event;
+                        $count++;
+                    }
+                    
+                    // Move to next week if we've processed all days
+                    if (in_array(6, $recurrence_days) && (int)$current->format('w') === 6) {
+                        $current->modify("+{$interval} weeks");
+                    } else {
+                        $current->modify('+1 day');
+                    }
+                }
+            }
+            // Handle other recurrence frequencies (DAILY, MONTHLY, etc.)
+            else if (isset($rrule['FREQ'])) {
+                $count = 0;
+                $max_instances = 100; // Safety limit
+                $interval = isset($rrule['INTERVAL']) ? max(1, intval($rrule['INTERVAL'])) : 1;
+                
+                // Start from the original event date
+                $current = clone $start;
+                
+                // If the original event is in the past, find the next occurrence
+                if ($current < $now) {
+                    $current = clone $now;
+                }
+                
+                // Generate instances until we reach the end date or max instances
+                while ($current <= $end_date && $count < $max_instances) {
+                    // Only add if it's within our date range
+                    if ($current >= $now && $current <= $end_date) {
+                        // Create a new instance for this occurrence
+                        $new_event = $event;
+                        
+                        // Set the start time
+                        $new_event['start_time'] = $current->format('Y-m-d H:i:s');
+                        
+                        // Calculate end time
+                        $new_end = clone $current;
+                        $new_end->modify("+{$duration} seconds");
+                        $new_event['end_time'] = $new_end->format('Y-m-d H:i:s');
+                        
+                        // Set a unique UID for this instance
+                        $new_event['uid'] = $event['uid'] . '_' . $count;
+                        
+                        $instances[] = $new_event;
+                        $count++;
+                    }
+                    
+                    // Move to next interval based on frequency
+                    switch (strtoupper($rrule['FREQ'])) {
+                        case 'DAILY':
+                            $current->modify("+{$interval} days");
+                            break;
+                        case 'WEEKLY':
+                            $current->modify("+{$interval} weeks");
+                            break;
+                        case 'MONTHLY':
+                            $current->modify("+{$interval} months");
+                            break;
+                        case 'YEARLY':
+                            $current->modify("+{$interval} years");
+                            break;
+                        default:
+                            $current->modify("+1 week");
+                    }
+                }
+            }
+            
+        } catch (Exception $e) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('GCAL Importer: Error generating recurring instances - ' . $e->getMessage());
+                error_log('Event data: ' . print_r($event, true));
+                error_log('RRULE: ' . print_r($rrule, true));
+            }
+        }
+        
+        return $instances;
+    }
+    
+    /**
+     * Get day name from day number (0=Sunday, 6=Saturday)
+     * 
+     * @param int $dayNumber Day of week (0-6)
+     * @return string Full day name in lowercase
+     */
+    private function getDayName($dayNumber) {
+        $days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        $dayNumber = (int)$dayNumber;
+        return $days[$dayNumber] ?? 'sunday'; // Default to Sunday if invalid
     }
 }

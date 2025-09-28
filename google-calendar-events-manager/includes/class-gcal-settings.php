@@ -46,16 +46,16 @@ class GCAL_Settings {
         
         wp_enqueue_style(
             'gcal-admin',
-            GCAL_EVENTS_PLUGIN_URL . 'assets/css/admin.css',
+            GCAL_PLUGIN_URL . 'assets/css/admin.css',
             [],
-            GCAL_EVENTS_VERSION
+            GCAL_VERSION
         );
         
         wp_enqueue_script(
             'gcal-admin',
-            GCAL_EVENTS_PLUGIN_URL . 'assets/js/admin.js',
+            GCAL_PLUGIN_URL . 'assets/js/admin.js',
             ['jquery'],
-            GCAL_EVENTS_VERSION,
+            GCAL_VERSION,
             true
         );
         
@@ -132,6 +132,18 @@ class GCAL_Settings {
             'gcal_general_section'
         );
         
+        add_settings_field(
+            'lookahead_months',
+            __('Zeitraum für wiederkehrende Ereignisse (Monate)', 'gcal-events'),
+            [$this, 'render_lookahead_field'],
+            'gcal-settings',
+            'gcal_general_section',
+            [
+                'label_for' => 'lookahead_months',
+                'description' => __('Wie viele Monate im Voraus sollen wiederkehrende Ereignisse angezeigt werden?', 'gcal-events')
+            ]
+        );
+        
         // Add preview styles
         add_action('admin_footer', [$this, 'add_theme_preview_styles']);
     }
@@ -170,6 +182,10 @@ class GCAL_Settings {
             : 'H:i';
             
         $sanitized['cleanup_on_deactivate'] = isset($input['cleanup_on_deactivate']) ? 1 : 0;
+        
+        $sanitized['lookahead_months'] = isset($input['lookahead_months']) 
+            ? max(1, min(12, (int)$input['lookahead_months'])) // Limit between 1-12 months
+            : 3; // Default to 3 months
         
         add_settings_error(
             'gcal_settings',
@@ -391,7 +407,7 @@ class GCAL_Settings {
                 esc_attr($active_class),
                 esc_attr($value),
                 esc_html($label),
-                esc_url(GCAL_EVENTS_PLUGIN_URL . 'assets/images/theme-' . $value . '.png'),
+                esc_url(plugin_dir_url(dirname(__FILE__)) . 'assets/images/theme-' . $value . '.png'),
                 esc_attr($label)
             );
         }
@@ -567,15 +583,34 @@ class GCAL_Settings {
     }
     
     public function render_cleanup_field() {
-        $value = isset($this->options['cleanup_on_deactivate']) ? (bool)$this->options['cleanup_on_deactivate'] : false;
+        $cleanup = $this->options['cleanup_on_deactivate'] ?? 0;
         ?>
         <label>
-            <input type='hidden' name='gcal_settings[cleanup_on_deactivate]' value='0'>
-            <input type='checkbox' name='gcal_settings[cleanup_on_deactivate]' value='1' <?php checked($value); ?>>
-            <?php _e('Datenbanktabelle beim Deaktivieren des Plugins löschen', 'gcal-events'); ?>
+            <input type="checkbox" name="gcal_settings[cleanup_on_deactivate]" value="1" <?php checked(1, $cleanup); ?>>
+            <?php _e('Datenbanktabellen beim Deaktivieren des Plugins löschen', 'gcal-events'); ?>
         </label>
-        <p class='description'>
-            <?php _e('Wenn aktiviert, wird die Datenbanktabelle mit allen Terminen beim Deaktivieren des Plugins gelöscht. Beim erneuten Aktivieren wird eine neue, leere Tabelle erstellt.', 'gcal-events'); ?>
+        <p class="description">
+            <?php _e('Aktivieren Sie diese Option, um alle Plugin-Daten bei der Deaktivierung zu löschen.', 'gcal-events'); ?>
+        </p>
+        <?php
+    }
+    
+    /**
+     * Render the lookahead months field
+     */
+    public function render_lookahead_field($args) {
+        $lookahead = $this->options['lookahead_months'] ?? 3;
+        ?>
+        <input type="number" 
+               id="lookahead_months" 
+               name="gcal_settings[lookahead_months]" 
+               min="1" 
+               max="12" 
+               step="1" 
+               value="<?php echo esc_attr($lookahead); ?>" 
+               class="small-text">
+        <p class="description">
+            <?php echo esc_html($args['description'] ?? ''); ?>
         </p>
         <?php
     }
