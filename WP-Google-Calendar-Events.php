@@ -1,11 +1,15 @@
 <?php
 /**
- * Plugin Name: Google Calendar Events Manager
+ * Plugin Name: WP Google Calendar Events
+ * Plugin URI: 
  * Description: Imports and displays events from Google Calendar
  * Version: 1.0.0
  * Author: DevBaka
- * License: GPL-2.0+
+ * Author URI: 
  * Text Domain: gcal-events
+ * Domain Path: /languages
+ * License: GPL-2.0+
+ * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  */
 
 // If this file is called directly, abort.
