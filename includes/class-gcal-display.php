@@ -17,6 +17,8 @@ class GCAL_Display {
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_gcal_get_events', [$this, 'ajax_get_events']);
         add_action('wp_ajax_nopriv_gcal_get_events', [$this, 'ajax_get_events']);
+        add_action('wp_ajax_gcal_filter_events', [$this, 'filter_events_ajax']);
+        add_action('wp_ajax_nopriv_gcal_filter_events', [$this, 'filter_events_ajax']);
     }
     
     public function enqueue_assets() {
@@ -135,19 +137,54 @@ class GCAL_Display {
         
         wp_send_json_success(['html' => $html]);
     }
+
+    public function filter_events_ajax() {
+        check_ajax_referer('gcal_events_nonce', 'nonce');
+
+        $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 0;
+        $show_past = isset($_POST['show_past']) ? $_POST['show_past'] === 'yes' : false;
+        $category = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
+
+        $events = $this->get_events($limit, $show_past);
+
+        $args = [
+            'limit' => $limit,
+            'show_past' => $show_past ? 'yes' : 'no',
+            'category' => $category,
+        ];
+
+        ob_start();
+        include GCAL_PLUGIN_DIR . 'templates/events-list.php';
+        $html = ob_get_clean();
+
+        wp_send_json_success(['html' => $html]);
+    }
     
-    private function get_events($limit = 0, $show_past = false) {
-        // Debug: Log the parameters
-        error_log('GCAL get_events - Limit: ' . $limit . ', Show Past: ' . ($show_past ? 'true' : 'false'));
+    public function get_events($limit = 0, $show_past = false) {
+        // Debug: Log the input parameters
+        error_log('GCAL get_events - Input - limit: ' . $limit . ', show_past: ' . ($show_past ? 'true' : 'false'));
         
         // Prepare query arguments
         $args = [
             'limit' => (int)$limit,
-            'show_past' => $show_past
+            'orderby' => 'start_time',
+            'order' => 'ASC'
         ];
+        
+        // Only add date condition if not showing past events
+        if (!$show_past) {
+            $now = new DateTime('now', new DateTimeZone('UTC'));
+            $args['start_date'] = $now->format('Y-m-d H:i:s');
+        }
         
         // Get events from database with limit applied in the query
         $events = $this->db->get_events($limit, $show_past, $args);
+        
+        // Debug: Log the raw events from database
+        error_log('GCAL get_events - Raw events count from DB: ' . count($events));
+        if (!empty($events)) {
+            error_log('GCAL get_events - First event: ' . print_r(reset($events), true));
+        }
         
         // Debug: Log the query results
         error_log('GCAL get_events - Found ' . count($events) . ' events');
@@ -186,6 +223,7 @@ class GCAL_Display {
         // Apply limit again as a fallback (in case filtering removed some events)
         if ($limit > 0) {
             $processed_events = array_slice($processed_events, 0, $limit);
+            error_log('GCAL get_events - After applying limit (' . $limit . '), events count: ' . count($processed_events));
         }
         
         // Debug: Log the final number of events

@@ -53,25 +53,6 @@ function gcal_enqueue_styles() {
             ['gcal-events-style'],
             GCAL_VERSION
         );
-        
-        // Enqueue theme-specific JavaScript for modern-expand
-        if ($theme === 'modern-expand') {
-            wp_enqueue_script(
-                'gcal-events-script-' . $theme,
-                GCAL_PLUGIN_URL . 'assets/js/gcal-events-modern-expand.js',
-                ['jquery'],
-                GCAL_VERSION,
-                true
-            );
-            
-            // Add Google Fonts
-            wp_enqueue_style(
-                'gcal-events-google-fonts',
-                'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Oswald:wght@400;700&display=swap',
-                [],
-                null
-            );
-        }
     }
     
     // Add inline style for theme class

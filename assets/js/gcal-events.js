@@ -5,23 +5,18 @@
     $(document).ready(function() {
         // Initialize events
         initEvents();
-        
-        // Handle AJAX loading if needed
-        if (typeof gcalEvents !== 'undefined' && gcalEvents.ajaxurl) {
-            loadEvents();
-        }
     });
 
     /**
      * Initialize event handlers
      */
     function initEvents() {
-        // Toggle event details
-        $(document).on('click', '.gcal-event', function(e) {
+        // Toggle event details for default theme
+        $(document).on('click', '.theme-default .event, .gcal-event', function(e) {
             e.preventDefault();
             
             const $event = $(this);
-            const $details = $event.next('.gcal-event-details');
+            const $details = $event.hasClass('event') ? $event.next('.event-details') : $event.next('.gcal-event-details');
             
             // Toggle active class
             $event.toggleClass('active');
@@ -33,8 +28,39 @@
         });
         
         // Handle external links
-        $(document).on('click', '.gcal-event a', function(e) {
+        $(document).on('click', '.event a, .gcal-event a', function(e) {
             e.stopPropagation();
+        });
+        
+        // Handle filter form submission
+        $(document).on('submit', '.gcal-filter-form', function(e) {
+            e.preventDefault();
+            const $form = $(this);
+            const $container = $form.closest('.gcal-events-container, .events-container');
+            
+            // Show loading
+            $container.addClass('loading');
+            
+            // Get form data
+            const formData = $form.serialize();
+            
+            // Send AJAX request
+            $.ajax({
+                url: gcalEvents.ajaxurl,
+                type: 'POST',
+                data: formData + '&action=gcal_filter_events',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success && response.data && response.data.html) {
+                        // Find the events container and update it
+                        const $eventsContainer = $container.find('.event-list, .gcal-events-list');
+                        $eventsContainer.html(response.data.html);
+                    }
+                },
+                complete: function() {
+                    $container.removeClass('loading');
+                }
+            });
         });
     }
 
