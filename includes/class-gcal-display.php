@@ -86,13 +86,33 @@ class GCAL_Display {
     }
     
     public function render_events_shortcode($atts = []) {
+        // Debug: Log the incoming attributes
+        error_log('GCAL Shortcode Attributes: ' . print_r($atts, true));
+        
         $atts = shortcode_atts([
             'limit' => 0,
             'show_past' => 'no',
             'category' => ''
         ], $atts, 'gcal_events');
         
+        // Debug: Log the parsed attributes
+        error_log('GCAL Parsed Attributes: ' . print_r($atts, true));
+        
+        // Get events here to ensure limit is applied
+        $limit = !empty($atts['limit']) ? (int)$atts['limit'] : 0;
+        $show_past = $atts['show_past'] === 'yes';
+        $events = $this->get_events($limit, $show_past);
+        
+        // Debug: Log the number of events found
+        error_log('GCAL Events Found: ' . count($events));
+        
         ob_start();
+        // Pass events and args to the template
+        $args = [
+            'limit' => $limit,
+            'show_past' => $show_past ? 'yes' : 'no',
+            'category' => $atts['category']
+        ];
         include GCAL_PLUGIN_DIR . 'templates/events-list.php';
         return ob_get_clean();
     }
@@ -117,29 +137,39 @@ class GCAL_Display {
     }
     
     private function get_events($limit = 0, $show_past = false) {
-        // Get events from database
-        $events = $this->db->get_events($limit, $show_past);
+        // Debug: Log the parameters
+        error_log('GCAL get_events - Limit: ' . $limit . ', Show Past: ' . ($show_past ? 'true' : 'false'));
         
-        // Get WordPress timezone
-        $timezone = wp_timezone();
-        $now = new DateTime('now', $timezone);
-        $timezone_string = $timezone->getName();
+        // Prepare query arguments
+        $args = [
+            'limit' => (int)$limit,
+            'show_past' => $show_past
+        ];
         
-        // Process each event for display
-        foreach ($events as &$event) {
+        // Get events from database with limit applied in the query
+        $events = $this->db->get_events($limit, $show_past, $args);
+        
+        // Debug: Log the query results
+        error_log('GCAL get_events - Found ' . count($events) . ' events');
+        
+        // Initialize variables
+        $now = new DateTime('now', new DateTimeZone('UTC'));
+        $processed_events = [];
+        
+        // Process each event
+        foreach ($events as $event) {
             try {
-                // Check if the time is already in the correct timezone
-                // We'll assume the time is already in the site's timezone from the importer
-                $event_start = new DateTime($event['start_time'], $timezone);
-                $event_end = new DateTime($event['end_time'], $timezone);
-                
-                // Update the timestamps (no timezone conversion needed)
-                $event['start_time'] = $event_start->format('Y-m-d H:i:s');
-                $event['end_time'] = $event_end->format('Y-m-d H:i:s');
+                $event_start = new DateTime($event['start_time'], new DateTimeZone('UTC'));
+                $event_end = new DateTime($event['end_time'], new DateTimeZone('UTC'));
                 
                 // Add formatted timestamps for easier access
                 $event['_start_timestamp'] = $event_start->getTimestamp();
                 $event['_end_timestamp'] = $event_end->getTimestamp();
+                
+                // Only add to processed events if it's a future event or we're showing past events
+                if ($show_past || $event['_end_timestamp'] >= $now->getTimestamp()) {
+                    $processed_events[] = $event;
+                }
                 
             } catch (Exception $e) {
                 // Skip invalid dates
@@ -147,27 +177,21 @@ class GCAL_Display {
                 continue;
             }
         }
-        unset($event); // Break the reference
-        
-        // Filter out past events if needed
-        if (!$show_past) {
-            $now_timestamp = $now->getTimestamp();
-            $events = array_filter($events, function($event) use ($now_timestamp) {
-                return $event['_end_timestamp'] >= $now_timestamp;
-            });
-        }
         
         // Sort events by start time
-        usort($events, function($a, $b) {
+        usort($processed_events, function($a, $b) {
             return $a['_start_timestamp'] - $b['_start_timestamp'];
         });
         
-        // Apply limit after all filtering and sorting
+        // Apply limit again as a fallback (in case filtering removed some events)
         if ($limit > 0) {
-            $events = array_slice($events, 0, $limit);
+            $processed_events = array_slice($processed_events, 0, $limit);
         }
         
-        return $events;
+        // Debug: Log the final number of events
+        error_log('GCAL get_events - Returning ' . count($processed_events) . ' events after processing');
+        
+        return $processed_events;
     }
     
     private function render_events_list($events) {

@@ -49,17 +49,18 @@ $local_timezone = new DateTimeZone($timezone_string);
 
 // Get events if not passed
 if (!isset($events)) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'gcal_events';
-    $query = "SELECT * FROM $table_name WHERE end_time >= %s ORDER BY start_time ASC";
-    $events = $wpdb->get_results($wpdb->prepare($query, $now), ARRAY_A);
-}
-
-// Filter past events if needed
-if (isset($args['show_past']) && $args['show_past'] !== 'yes') {
-    $events = array_filter($events, function($event) use ($now) {
-        return $event['end_time'] >= $now;
-    });
+    global $gcal_display;
+    if (!isset($gcal_display)) {
+        $gcal_db = new GCAL_DB();
+        $gcal_display = new GCAL_Display($gcal_db);
+    }
+    
+    // Get limit from shortcode atts, default to 0 (no limit)
+    $limit = isset($args['limit']) ? intval($args['limit']) : 0;
+    $show_past = isset($args['show_past']) && $args['show_past'] === 'yes';
+    
+    // Use the get_events method which respects the limit
+    $events = $gcal_display->get_events($limit, $show_past);
 }
 ?>
 

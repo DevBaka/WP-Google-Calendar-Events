@@ -279,6 +279,7 @@ class GCAL_DB {
             'orderby'    => 'start_time',
             'order'      => 'ASC',
             'search'     => '',
+            'limit'      => $limit > 0 ? $limit : 0, // Use the limit from parameters if provided
         ];
         
         $args = wp_parse_args($args, $defaults);
@@ -308,8 +309,11 @@ class GCAL_DB {
         $orderby = in_array($args['orderby'], ['start_time', 'end_time', 'last_modified']) ? $args['orderby'] : 'start_time';
         $query .= " ORDER BY $orderby $order";
         
-        // Add limit
-        if ($limit > 0) {
+        // Add limit from args if set, otherwise use the direct limit parameter
+        if (!empty($args['limit']) && is_numeric($args['limit']) && $args['limit'] > 0) {
+            $query .= " LIMIT %d";
+            $query_args[] = (int)$args['limit'];
+        } else if ($limit > 0) {
             $query .= " LIMIT %d";
             $query_args[] = $limit;
         }
