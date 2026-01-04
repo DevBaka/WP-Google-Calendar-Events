@@ -569,6 +569,36 @@ class GCAL_DB {
             )
         );
     }
+
+    public function delete_missing_recurring_instances($base_uid, $keep_uids) {
+        if (empty($base_uid) || !is_string($base_uid)) {
+            return false;
+        }
+
+        if (empty($keep_uids) || !is_array($keep_uids)) {
+            $keep_uids = [];
+        }
+
+        $keep_uids = array_values(array_filter(array_map('strval', $keep_uids)));
+
+        $like_new = $this->wpdb->esc_like($base_uid . '|') . '%';
+        $like_legacy = $this->wpdb->esc_like($base_uid . '_') . '%';
+
+        if (empty($keep_uids)) {
+            $sql = "DELETE FROM `{$this->table_name}` WHERE (uid LIKE %s OR uid LIKE %s OR uid = %s)";
+            $prepared = $this->wpdb->prepare($sql, [$like_new, $like_legacy, $base_uid]);
+            return $this->wpdb->query($prepared);
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($keep_uids), '%s'));
+
+        $sql = "DELETE FROM `{$this->table_name}` WHERE ((uid LIKE %s AND uid NOT IN ($placeholders)) OR uid LIKE %s OR uid = %s)";
+
+        $params = array_merge([$like_new], $keep_uids, [$like_legacy, $base_uid]);
+        $prepared = $this->wpdb->prepare($sql, $params);
+
+        return $this->wpdb->query($prepared);
+    }
     
     /**
      * Get the database version
@@ -661,7 +691,7 @@ class GCAL_DB {
         // Check if event with this UID already exists
         $existing = $this->wpdb->get_row(
             $this->wpdb->prepare(
-                "SELECT id, last_modified FROM {$this->table_name} WHERE uid = %s",
+                "SELECT id, last_modified, summary, location, description, start_time, end_time, rrule FROM {$this->table_name} WHERE uid = %s",
                 $event['uid']
             )
         );
@@ -678,8 +708,24 @@ class GCAL_DB {
         ];
 
         if ($existing) {
-            // Update existing event if it has been modified
-            if (strtotime($existing->last_modified) < strtotime($event_data['last_modified'])) {
+            $incoming_modified = strtotime($event_data['last_modified']);
+            $stored_modified = strtotime($existing->last_modified);
+
+            $has_newer_timestamp = ($incoming_modified !== false && $stored_modified !== false)
+                ? ($stored_modified < $incoming_modified)
+                : false;
+
+            $has_field_changes = (
+                (string)$existing->summary !== (string)$event_data['summary'] ||
+                (string)$existing->location !== (string)$event_data['location'] ||
+                (string)$existing->description !== (string)$event_data['description'] ||
+                (string)$existing->start_time !== (string)$event_data['start_time'] ||
+                (string)$existing->end_time !== (string)$event_data['end_time'] ||
+                (string)$existing->rrule !== (string)$event_data['rrule']
+            );
+
+            // Update existing event if it has been modified or core fields changed
+            if ($has_newer_timestamp || $has_field_changes) {
                 $result = $this->wpdb->update(
                     $this->table_name,
                     $event_data,
@@ -700,7 +746,7 @@ class GCAL_DB {
                 
                 return $result;
             }
-            // No update needed - event is not modified
+            // No update needed
             return true;
         } else {
             // Insert new event

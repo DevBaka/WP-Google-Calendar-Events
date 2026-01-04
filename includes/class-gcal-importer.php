@@ -7,6 +7,7 @@ class GCAL_Importer {
     private $db;
     private $ics_url;
     private $timezone;
+    private $last_series_base_uids = [];
     
     public function __construct($db) {
         $this->db = $db;
@@ -55,9 +56,32 @@ class GCAL_Importer {
         }
         
         $imported = 0;
+        $series_keep_uids = [];
         foreach ($events as $event) {
+            if (!empty($event['uid']) && strpos($event['uid'], '|') !== false) {
+                $base_uid = strstr($event['uid'], '|', true);
+                if ($base_uid !== false && $base_uid !== '') {
+                    if (!isset($series_keep_uids[$base_uid])) {
+                        $series_keep_uids[$base_uid] = [];
+                    }
+                    $series_keep_uids[$base_uid][] = $event['uid'];
+                }
+            }
+
             if ($this->db->update_or_insert_event($event)) {
                 $imported++;
+            }
+        }
+
+        foreach ($series_keep_uids as $base_uid => $keep_uids) {
+            $this->db->delete_missing_recurring_instances($base_uid, $keep_uids);
+        }
+
+        if (!empty($this->last_series_base_uids)) {
+            foreach ($this->last_series_base_uids as $base_uid) {
+                if (!isset($series_keep_uids[$base_uid])) {
+                    $this->db->delete_missing_recurring_instances($base_uid, []);
+                }
             }
         }
         
@@ -102,7 +126,8 @@ class GCAL_Importer {
         $event = [];
         $in_event = false;
         $rrule = null;
-        $processed_uids = []; // Track processed UIDs to prevent duplicates
+        $masters = [];
+        $exceptions = [];
         
         foreach ($lines as $line) {
             $line = trim($line);
@@ -116,22 +141,23 @@ class GCAL_Importer {
             
             if (strpos($line, 'END:VEVENT') !== false) {
                 if (!empty($event) && !empty($event['uid'])) {
-                    // Skip if we've already processed this UID to prevent duplicates
-                    if (in_array($event['uid'], $processed_uids)) {
-                        $in_event = false;
-                        continue;
-                    }
-                    
-                    // Add the original event to processed UIDs
-                    $processed_uids[] = $event['uid'];
-                    
-                    if (isset($event['rrule'])) {
-                        // For recurring events, only generate future instances
-                        // The original event is already included in the instances
-                        $recurring_events = $this->generate_recurring_instances($event);
-                        $events = array_merge($events, $recurring_events);
+                    if (!empty($event['rrule']) && empty($event['recurrence_id'])) {
+                        if (!isset($masters[$event['uid']])) {
+                            $masters[$event['uid']] = $event;
+                        } else {
+                            $existing_modified = !empty($masters[$event['uid']]['last_modified']) ? strtotime($masters[$event['uid']]['last_modified']) : 0;
+                            $candidate_modified = !empty($event['last_modified']) ? strtotime($event['last_modified']) : 0;
+                            if ($candidate_modified >= $existing_modified) {
+                                $masters[$event['uid']] = $event;
+                            }
+                        }
+                    } elseif (!empty($event['recurrence_id'])) {
+                        if (!isset($exceptions[$event['uid']])) {
+                            $exceptions[$event['uid']] = [];
+                        }
+                        $key = !empty($event['recurrence_key']) ? $event['recurrence_key'] : $event['recurrence_id'];
+                        $exceptions[$event['uid']][$key] = $event;
                     } else {
-                        // Single event - only add if it's in the future
                         if (isset($event['end_time']) && $event['end_time'] > current_time('mysql')) {
                             $events[] = $event;
                         }
@@ -161,6 +187,11 @@ class GCAL_Importer {
                     switch ($key) {
                         case 'UID':
                             $event['uid'] = $value;
+                            break;
+
+                        case 'RECURRENCE-ID':
+                            $event['recurrence_id'] = $this->parse_ical_date($value);
+                            $event['recurrence_key'] = $this->to_utc_key($event['recurrence_id']);
                             break;
                             
                         case 'SUMMARY':
@@ -194,6 +225,25 @@ class GCAL_Importer {
                             }
                             $event['rrule'] = $rrule;
                             break;
+
+                        case 'EXDATE':
+                            $exdates = explode(',', $value);
+                            foreach ($exdates as $exdate) {
+                                $exdate = trim($exdate);
+                                if ($exdate === '') {
+                                    continue;
+                                }
+                                $parsed = $this->parse_ical_date($exdate);
+                                if (!empty($parsed)) {
+                                    $event['exdates'][] = $parsed;
+                                    $event['exdate_keys'][] = $this->to_utc_key($parsed);
+                                }
+                            }
+                            break;
+
+                        case 'STATUS':
+                            $event['status'] = strtoupper(trim($value));
+                            break;
                             
                         case 'LAST-MODIFIED':
                         case 'DTSTAMP':
@@ -203,7 +253,55 @@ class GCAL_Importer {
                 }
             }
         }
-        
+
+        foreach ($masters as $base_uid => $master) {
+            $instances = $this->generate_recurring_instances($master);
+
+            if (!empty($master['exdate_keys'])) {
+                $excluded = array_flip(array_map('strval', $master['exdate_keys']));
+                $instances = array_values(array_filter($instances, function($inst) use ($excluded) {
+                    return empty($inst['recurrence_key']) || !isset($excluded[(string)$inst['recurrence_key']]);
+                }));
+            }
+
+            if (!empty($exceptions[$base_uid])) {
+                $by_recurrence = [];
+                foreach ($instances as $inst) {
+                    if (!empty($inst['recurrence_key'])) {
+                        $by_recurrence[$inst['recurrence_key']] = $inst;
+                    }
+                }
+
+                foreach ($exceptions[$base_uid] as $recurrence_id => $exception) {
+                    if (!empty($exception['status']) && $exception['status'] === 'CANCELLED') {
+                        unset($by_recurrence[$recurrence_id]);
+                        continue;
+                    }
+
+                    $by_recurrence[$recurrence_id] = $exception;
+                }
+
+                $instances = array_values($by_recurrence);
+            }
+
+            foreach ($instances as &$inst) {
+                $key = !empty($inst['recurrence_key']) ? $inst['recurrence_key'] : $this->to_utc_key($inst['start_time']);
+                $inst['uid'] = $base_uid . '|' . $key;
+            }
+            unset($inst);
+
+            $events = array_merge($events, $instances);
+        }
+
+        $this->last_series_base_uids = array_keys($masters);
+
+        foreach ($events as &$event_item) {
+            if (!empty($event_item['rrule']) && is_array($event_item['rrule'])) {
+                $event_item['rrule'] = wp_json_encode($event_item['rrule']);
+            }
+        }
+        unset($event_item);
+
         return $events;
     }
     
@@ -332,6 +430,17 @@ class GCAL_Importer {
             // Set end date in site's timezone
             $end_date = new DateTime('now', $site_timezone);
             $end_date->modify("+{$lookahead_months} months");
+
+            // Respect RRULE UNTIL if present
+            if (isset($rrule['UNTIL']) && !empty($rrule['UNTIL'])) {
+                $until_mysql = $this->parse_ical_date($rrule['UNTIL']);
+                if (!empty($until_mysql)) {
+                    $until_dt = new DateTime($until_mysql, $site_timezone);
+                    if ($until_dt < $end_date) {
+                        $end_date = $until_dt;
+                    }
+                }
+            }
             
             // Get the current time in site's timezone for comparison
             $now = new DateTime('now', $site_timezone);
@@ -340,6 +449,9 @@ class GCAL_Importer {
             if (isset($rrule['FREQ']) && $rrule['FREQ'] === 'WEEKLY') {
                 $count = 0;
                 $max_instances = 100; // Safety limit
+                if (isset($rrule['COUNT']) && is_numeric($rrule['COUNT'])) {
+                    $max_instances = min($max_instances, max(0, (int)$rrule['COUNT']));
+                }
                 $interval = isset($rrule['INTERVAL']) ? max(1, intval($rrule['INTERVAL'])) : 1;
                 
                 // Get the original event's time components
@@ -415,8 +527,8 @@ class GCAL_Importer {
                         $new_end->modify("+{$duration} seconds");
                         $new_event['end_time'] = $new_end->format('Y-m-d H:i:s');
                         
-                        // Set a unique UID for this instance
-                        $new_event['uid'] = $event['uid'] . '_' . $current->format('Ymd');
+                        $new_event['recurrence_id'] = $current->format('Y-m-d H:i:s');
+                        $new_event['recurrence_key'] = $this->to_utc_key($new_event['recurrence_id']);
                         
                         $instances[] = $new_event;
                         $count++;
@@ -434,6 +546,9 @@ class GCAL_Importer {
             else if (isset($rrule['FREQ'])) {
                 $count = 0;
                 $max_instances = 100; // Safety limit
+                if (isset($rrule['COUNT']) && is_numeric($rrule['COUNT'])) {
+                    $max_instances = min($max_instances, max(0, (int)$rrule['COUNT']));
+                }
                 $interval = isset($rrule['INTERVAL']) ? max(1, intval($rrule['INTERVAL'])) : 1;
                 
                 // Start from the original event date
@@ -459,8 +574,8 @@ class GCAL_Importer {
                         $new_end->modify("+{$duration} seconds");
                         $new_event['end_time'] = $new_end->format('Y-m-d H:i:s');
                         
-                        // Set a unique UID for this instance
-                        $new_event['uid'] = $event['uid'] . '_' . $count;
+                        $new_event['recurrence_id'] = $current->format('Y-m-d H:i:s');
+                        $new_event['recurrence_key'] = $this->to_utc_key($new_event['recurrence_id']);
                         
                         $instances[] = $new_event;
                         $count++;
@@ -495,6 +610,20 @@ class GCAL_Importer {
         }
         
         return $instances;
+    }
+
+    private function to_utc_key($mysql_datetime) {
+        if (empty($mysql_datetime)) {
+            return '';
+        }
+
+        try {
+            $dt = new DateTime($mysql_datetime, $this->timezone);
+            $dt->setTimezone(new DateTimeZone('UTC'));
+            return $dt->format('Ymd\\THis\\Z');
+        } catch (Exception $e) {
+            return '';
+        }
     }
     
     /**
